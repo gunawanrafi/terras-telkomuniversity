@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  # Auth Database (PostgreSQL)
+  postgres:
+    image: postgres:15
+    container_name: terras_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: terras_auth
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # Room & Booking Database (MongoDB)
+  mongo:
+    image: mongo:7
+    container_name: terras_mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  postgres_data:
+  mongo_data:

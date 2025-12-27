@@ -1,0 +1,147 @@
+# Microservices Architecture Design (Final)
+
+## Visual Diagram
+
+```mermaid
+graph TD
+    %% User Access
+    User[Web Browser / Client] -->|HTTPS| Gateway
+
+    %% Gateway / Frontend Layer
+    subgraph "Frontend Service (Gateway)"
+        Gateway[API Gateway - Nginx]
+        UI[React Application]
+        Gateway -->|Serve Static| UI
+    end
+
+    %% API Routing
+    Gateway -->|/api/auth/*| AuthService
+    Gateway -->|/api/rooms/*| RoomService
+    Gateway -->|/api/buildings/*| RoomService
+    Gateway -->|/api/bookings/*| BookingService
+
+    %% Backend Services Layer
+    subgraph "Backend Microservices (Docker Network)"
+        %% Auth Context
+        subgraph "Identity Domain"
+            AuthService[Auth Service]
+            AuthDB[(User DB<br/>PostgreSQL)]
+            AuthService -->|CRUD Users| AuthDB
+        end
+
+        %% Room Management Context
+        subgraph "Infrastructure Domain"
+            RoomService[Room Service<br/>Handles Rooms + Buildings]
+            RoomDB[(Room DB<br/>MongoDB)]
+            RoomService -->|CRUD Rooms<br/>CRUD Buildings| RoomDB
+        end
+
+        %% Booking Context
+        subgraph "Booking Domain"
+            BookingService[Booking Service]
+            BookingDB[(Booking DB<br/>MongoDB)]
+            BookingService -->|CRUD Bookings| BookingDB
+        end
+    end
+
+    %% Inter-Service Communication
+    BookingService -.->|Verify Room Exists| RoomService
+
+    classDef service fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
+    classDef db fill:#fff3e0,stroke:#e65100,stroke-width:2px;
+    classDef gateway fill:#f3e5f5,stroke:#4a148c,stroke-width:2px;
+
+    class AuthService,RoomService,BookingService service;
+    class AuthDB,RoomDB,BookingDB db;
+    class Gateway gateway;
+```
+
+## Service Breakdown
+
+| Service | Port | Database | Tanggung Jawab | Endpoints |
+|---------|------|----------|----------------|-----------|
+| **Auth Service** | 3001 | PostgreSQL (User DB) | Login, Register, JWT, Role Check | `POST /login`, `POST /register`, `GET /verify` |
+| **Room Service** | 3002 | MongoDB (Room DB) | CRUD Ruangan + Gedung, Fasilitas | `GET/POST/PUT/DELETE /rooms`<br/>`GET/POST/PUT/DELETE /buildings` |
+| **Booking Service** | 3003 | MongoDB (Booking DB) | CRUD Booking, Approval, Conflict Check | `GET/POST/PUT /bookings`<br/>`POST /bookings/:id/approve`<br/>`POST /bookings/:id/reject` |
+| **Gateway** | 80/443 | - | Routing, Static Files | Proxy semua `/api/*` |
+
+## Database Collections
+
+### PostgreSQL (User DB)
+```sql
+users (id, email, password_hash, name, role, created_at)
+```
+
+### MongoDB (Room DB)
+```javascript
+// Collection: buildings
+{
+  _id: ObjectId,
+  name: String,
+  code: String,
+  createdAt: Date
+}
+
+// Collection: rooms
+{
+  _id: ObjectId,
+  name: String,
+  code: String,
+  buildingId: ObjectId, // Reference to buildings
+  buildingName: String, // Denormalized for performance
+  capacity: Number,
+  type: String,
+  facilities: [String],
+  image: String,
+  createdAt: Date
+}
+```
+
+### MongoDB (Booking DB)
+```javascript
+// Collection: bookings
+{
+  _id: ObjectId,
+  userId: String,
+  userName: String,
+  roomId: String,
+  roomName: String,
+  buildingName: String,
+  startDate: Date,
+  endDate: Date,
+  startTime: String,
+  endTime: String,
+  activityName: String,
+  activityType: String,
+  description: String,
+  fileName: String,
+  status: String, // 'pending', 'approved', 'rejected'
+  createdAt: Date
+}
+```
+
+## Keuntungan Arsitektur Ini
+
+1. ✅ **Memenuhi Requirement**: 3+ service terpisah (Auth, Room, Booking, Gateway)
+2. ✅ **2 Database Terpisah**: PostgreSQL (User) + MongoDB (Room + Booking)
+3. ✅ **Manageable Complexity**: 4 services lebih mudah di-maintain
+4. ✅ **Cost Efficient**: Hemat Azure resource
+5. ✅ **Domain-Driven Design**: Room + Building satu bounded context (Infrastructure)
+
+## Komunikasi Antar-Service
+
+**Booking Service → Room Service**
+- Saat create booking, validasi `roomId` exists
+- HTTP GET request: `http://room-service:3002/api/rooms/:id`
+
+## Technology Stack
+
+| Layer | Technology |
+|-------|------------|
+| Frontend | React (Vite) + TailwindCSS |
+| Gateway | Nginx |
+| Backend | Node.js + Express |
+| Auth DB | PostgreSQL 15 |
+| Project DBs | MongoDB 7 |
+| Containerization | Docker + Docker Compose |
+| Deployment | Azure Container Apps |
