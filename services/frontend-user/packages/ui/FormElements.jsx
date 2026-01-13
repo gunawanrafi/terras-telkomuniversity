@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { cva } from 'class-variance-authority';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
 import { cn } from '../core';
 
 const buttonVariants = cva(
@@ -63,7 +64,43 @@ export const Input = React.forwardRef(({ className, type, label, ...props }, ref
     );
 });
 Input.displayName = "Input";
-// Export DatePicker
-export { DatePicker } from './DatePicker';
-export { ScheduleDatePicker } from './ScheduleDatePicker';
-export { TimePicker } from './TimePicker';
+
+// DatePicker Component
+export const DatePicker = React.forwardRef(({ className, label, ...props }, ref) => {
+    return (
+        <div className="w-full space-y-1">
+            {label && <label className="text-sm font-medium text-slate-700 block">{label}</label>}
+            <input
+                type="date"
+                className={cn(
+                    "flex h-9 w-full rounded-md border border-slate-300 bg-white px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary-red disabled:cursor-not-allowed disabled:opacity-50",
+                    "[&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-3 [&::-webkit-calendar-picker-indicator]:opacity-50 [&::-webkit-calendar-picker-indicator]:hover:opacity-100 [&::-webkit-calendar-picker-indicator]:cursor-pointer",
+                    className
+                )}
+                ref={ref}
+                {...props}
+            />
+        </div>
+    );
+});
+DatePicker.displayName = "DatePicker";
+
+// TimePicker Component
+export const TimePicker = React.forwardRef(({ className, label, ...props }, ref) => {
+    return (
+        <div className="w-full space-y-1">
+            {label && <label className="text-sm font-medium text-slate-700 block">{label}</label>}
+            <input
+                type="time"
+                className={cn(
+                    "flex h-9 w-full rounded-md border border-slate-300 bg-white px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary-red disabled:cursor-not-allowed disabled:opacity-50",
+                    "[&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-3 [&::-webkit-calendar-picker-indicator]:opacity-50 [&::-webkit-calendar-picker-indicator]:hover:opacity-100 [&::-webkit-calendar-picker-indicator]:cursor-pointer",
+                    className
+                )}
+                ref={ref}
+                {...props}
+            />
+        </div>
+    );
+});
+TimePicker.displayName = "TimePicker";

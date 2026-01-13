@@ -1,131 +1,243 @@
 # TERRAS - Room Booking System
-**Telkom University Room Reservation & Administration System**
+### Telkom Room Reservation and Administration System
 
-A comprehensive room booking management system built with microservices architecture, featuring separate frontends for users and administrators, powered by MongoDB and PostgreSQL databases.
+[![Docker](https://img.shields.io/badge/Docker-Ready-blue)](https://www.docker.com/)
+[![Node.js](https://img.shields.io/badge/Node.js-18-green)](https://nodejs.org/)
+[![React](https://img.shields.io/badge/React-18-blue)](https://reactjs.org/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-7-green)](https://www.mongodb.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue)](https://www.postgresql.org/)
 
-## 🚀 Features
+A modern, microservices-based room booking system built for Telkom University with Docker containerization and Azure cloud deployment support.
+
+---
+
+## 📋 Table of Contents
+
+- [Features](#-features)
+- [Architecture](#-architecture)
+- [Tech Stack](#-tech-stack)
+- [Prerequisites](#-prerequisites)
+- [Quick Start](#-quick-start)
+- [Project Structure](#-project-structure)
+- [Configuration](#-configuration)
+- [Deployment](#-deployment)
+- [API Documentation](#-api-documentation)
+- [Development](#-development)
+- [Troubleshooting](#-troubleshooting)
+- [Contributing](#-contributing)
+- [License](#-license)
+
+---
+
+## ✨ Features
 
 ### User Features
-- **Room Browsing**: View available rooms with detailed information and images
-- **Multi-Day Booking**: Book rooms for single or multiple consecutive days
-- **Time Selection**: Flexible time slot selection with 24-hour format
-- **Schedule View**: Check room availability by date with visual timeline
-- **Booking Management**: Track booking status (pending, approved, rejected)
-- **File Upload**: Attach supporting documents (PDF, DOC, DOCX, max 5MB)
-- **Conflict Detection**: Automatic detection of scheduling conflicts
+- 🏢 Browse available rooms by building and facilities
+- 📅 Interactive timeline view of room schedules
+- 🔍 Advanced filtering (building, capacity, time)
+- 📱 Mobile-responsive design with touch scrolling
+- 🎫 Create and manage bookings
+- 📊 View booking history and status
 
-### Admin Features  
-- **Booking Approvals**: Review and approve/reject pending bookings
-- **Room Management**: Add, edit, and delete rooms and buildings
-- **User Management**: View and manage registered users
-- **Dashboard Analytics**: Overview of system statistics
-- **Activity Logging**: Track admin actions and system events
+### Admin Features
+- 🏗️ Building and room management (CRUD)
+- 👥 User management and role assignment
+- ✅ Booking approval/rejection workflow
+- 📈 Dashboard with booking statistics
+- 🖼️ Room images and facility tagging
 
-### Technical Features
-- ✅ **Multi-day conflict detection** - Prevents overlapping bookings across date ranges
-- ✅ **Real-time validation** - Instant feedback on booking conflicts
-- ✅ **Microservices architecture** - Scalable and maintainable design
-- ✅ **RESTful APIs** - Clean API design for all services
-- ✅ **Responsive UI** - Works on desktop, tablet, and mobile devices
+### System Features
+- 🔐 JWT-based authentication
+- 👮 Role-based access control (User/Admin)
+- 🐳 Fully containerized with Docker
+- ☁️ Azure cloud deployment ready
+- 🔄 Automated data seeding
+- 🛡️ 5-layer security architecture
+- 📊 Real-time conflict detection
+
+---
+
+## 🏗️ Architecture
+
+**Microservices Architecture** with separate frontend and backend services:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    User Requests                         │
+└──────────────┬──────────────────────────────────────────┘
+               │
+    ┌──────────▼──────────┐
+    │   Nginx (Port 80)   │  Reverse Proxy
+    └──────────┬──────────┘
+               │
+    ┌──────────▼──────────────────────────────────┐
+    │          Frontend Services                   │
+    ├──────────────────────────────────────────────┤
+    │  User (5173)  │  Admin (5174)  │  Auth (5175)│
+    └──────────┬───────────┬──────────┬────────────┘
+               │           │          │
+    ┌──────────▼───────────▼──────────▼────────────┐
+    │          Backend Services (Node.js)           │
+    ├──────────────────────────────────────────────┤
+    │  Auth (3001)  │  Room (3002)  │  Booking (3003)│
+    └──────────┬───────────┬──────────┬────────────┘
+               │           │          │
+    ┌──────────▼───────────▼──────────▼────────────┐
+    │             Databases                         │
+    ├──────────────────────────────────────────────┤
+    │  PostgreSQL (5432)   │   MongoDB (27017)     │
+    │  Users & Auth        │   Rooms & Bookings    │
+    └──────────────────────────────────────────────┘
+```
+
+For detailed architecture, see [ARCHITECTURE.md](./ARCHITECTURE.md)
+
+---
+
+## 🛠️ Tech Stack
+
+### Frontend
+- **Framework:** React 18
+- **Build Tool:** Vite
+- **Styling:** TailwindCSS
+- **Routing:** React Router v7
+- **HTTP Client:** Fetch API
+- **Icons:** Lucide React
+
+### Backend
+- **Runtime:** Node.js 18
+- **Framework:** Express.js
+- **Authentication:** JWT (jsonwebtoken)
+- **Password Hashing:** bcryptjs
+- **CORS:** cors middleware
+
+### Databases
+- **PostgreSQL 15** - User authentication and management
+  - ORM: Sequelize
+- **MongoDB 7** - Rooms and bookings data
+  - ODM: Mongoose
+
+### DevOps
+- **Containerization:** Docker & Docker Compose
+- **Web Server:** Nginx (reverse proxy)
+- **Cloud:** Azure VM (Ubuntu 20.04)
+- **Image Registry:** Docker Hub
+
+---
+
+## 📦 Prerequisites
+
+**Required:**
+- Docker Engine 20.10+
+- Docker Compose 2.0+
+- Node.js 18+ (for local development)
+- Git
+
+**Optional:**
+- Azure CLI (for cloud deployment)
+- VS Code with Docker extension
+
+**System Requirements:**
+- RAM: 4GB minimum (8GB recommended)
+- Storage: 10GB free space
+- CPU: 2 cores minimum
+
+---
+
+## 🚀 Quick Start
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/YOUR_USERNAME/terras-room-booking.git
+cd terras-room-booking
+```
+
+### 2. Create Environment Files
+
+```bash
+# Copy example env files
+cp services/frontend-user/.env.example services/frontend-user/.env
+cp services/frontend-admin/.env.example services/frontend-admin/.env
+cp services/frontend-auth/.env.example services/frontend-auth/.env
+```
+
+**Edit `.env` files** and update URLs for your environment (see [Configuration](#-configuration))
+
+### 3. Start with Docker Compose
+
+```bash
+# Build and start all services
+docker-compose up -d
+
+# Wait for services to initialize (~30 seconds)
+docker-compose logs -f
+```
+
+### 4. Access the Application
+
+- **User App:** http://localhost:5173
+- **Admin App:** http://localhost:5174
+- **Auth App:** http://localhost:5175
+
+### Default Credentials
+
+**Admin Account:**
+```
+Email: admin@telkomuniversity.ac.id
+Password: admin123
+```
+
+**User Account:**
+```
+Email: john@student.telkomuniversity.ac.id
+Password: user123
+```
+
+---
 
 ## 📁 Project Structure
 
 ```
-UASfix/
-├── services/                    # Microservices
-│   ├── auth/                   # Authentication (PostgreSQL)
-│   ├── booking/                # Booking management (MongoDB)
-│   ├── room/                   # Room management (MongoDB)
-│   ├── frontend-user/          # User interface (React)
-│   ├── frontend-admin/         # Admin interface (React)
-│   └── frontend-auth/          # Auth interface (React)
-├── packages/                    # Shared packages
-│   ├── core/                   # Services & utilities
-│   └── ui/                     # Shared UI components
-├── public/                      # Static assets
-├── start-all.sh                # Start all services
-├── stop-all.sh                 # Stop all services
-└── README.md
+terras-room-booking/
+├── services/
+│   ├── auth/                 # Authentication service
+│   │   ├── server.js         # Express server
+│   │   ├── Dockerfile        # Container config
+│   │   └── package.json
+│   ├── room/                 # Room management service
+│   │   ├── server.js
+│   │   ├── Dockerfile
+│   │   └── package.json
+│   ├── booking/              # Booking service
+│   │   ├── server.js
+│   │   ├── Dockerfile
+│   │   └── package.json
+│   ├── frontend-user/        # User interface
+│   │   ├── src/
+│   │   ├── Dockerfile
+│   │   ├── nginx.conf
+│   │   └── package.json
+│   ├── frontend-admin/       # Admin dashboard
+│   │   └── ...
+│   └── frontend-auth/        # Login/Register UI
+│       └── ...
+├── docker-compose.yml        # Development setup
+├── docker-compose.prod.yml   # Production setup
+├── .gitignore
+├── README.md
+└── ARCHITECTURE.md
 ```
 
-## 🛠️ Tech Stack
+---
 
-### Backend
-- **Runtime**: Node.js v20+
-- **Framework**: Express.js
-- **Databases**: 
-  - MongoDB (Rooms & Bookings)
-  - PostgreSQL (Authentication)
-- **ODM/ORM**: Mongoose, Sequelize
+## ⚙️ Configuration
 
-### Frontend
-- **Framework**: React 19
-- **Build Tool**: Vite 7
-- **Router**: React Router v7
-- **Styling**: Tailwind CSS 3
-- **Icons**: Lucide React
-- **State Management**: React Hooks + Context API
+### Frontend Environment Variables
 
-## 📋 Prerequisites
+Each frontend service needs these environment variables:
 
-- **Node.js**: v20.x or higher
-- **MongoDB**: v7.x or higher
-- **PostgreSQL**: v16.x or higher
-- **npm**: v10.x or higher
-
-## 🚀 Quick Start
-
-### 1. Clone Repository
-```bash
-git clone <repository-url>
-cd UASfix
-```
-
-### 2. Install Dependencies
-
-Install backend dependencies:
-```bash
-cd services/auth && npm install && cd ../..
-cd services/room && npm install && cd ../..
-cd services/booking && npm install && cd ../..
-```
-
-Install frontend dependencies:
-```bash
-cd services/frontend-user && npm install && cd ../..
-cd services/frontend-admin && npm install && cd ../..
-cd services/frontend-auth && npm install && cd ../..
-```
-
-### 3. Configure Environment
-
-Create `.env` files in each service directory (already configured):
-
-**services/auth/.env**:
-```env
-PORT=3001
-DB_HOST=localhost
-DB_USER=postgres
-DB_PASSWORD=your_password
-DB_NAME=terras_auth
-DB_PORT=5432
-JWT_SECRET=your_jwt_secret
-```
-
-**services/room/.env**:
-```env
-PORT=3002
-MONGODB_URI=mongodb://localhost:27017/terras_rooms
-```
-
-**services/booking/.env**:
-```env
-PORT=3003
-MONGODB_URI=mongodb://localhost:27017/terras_bookings
-ROOM_SERVICE_URL=http://localhost:3002
-```
-
-**services/frontend-*/.env**:
+**`services/frontend-user/.env`:**
 ```env
 VITE_API_URL=http://localhost:3001
 VITE_ROOM_SERVICE=http://localhost:3002
@@ -135,141 +247,283 @@ VITE_USER_APP_URL=http://localhost:5173
 VITE_ADMIN_APP_URL=http://localhost:5174
 ```
 
-### 4. Start All Services
+**For production/cloud deployment**, replace `localhost` with your domain:
+```env
+VITE_API_URL=http://your-domain.com:3001
+# or with reverse proxy:
+VITE_API_URL=http://your-domain.com/api/auth
+```
 
-Use the provided script to start everything:
+### Backend Environment Variables
+
+**Auth Service (PostgreSQL connection):**
+```env
+PORT=3001
+DB_NAME=terras_auth
+DB_USER=postgres
+DB_PASS=postgres
+DB_HOST=postgres
+JWT_SECRET=your-secret-key-change-this
+```
+
+**Room/Booking Services (MongoDB connection):**
+```env
+PORT=3002
+MONGODB_URI=mongodb://mongo:27017/terras_rooms
+```
+
+---
+
+## 🌐 Deployment
+
+### Local Deployment (Development)
+
 ```bash
-./start-all.sh
+docker-compose up -d
 ```
 
-This will start:
-- **Backend Services** on ports 3001, 3002, 3003
-- **Frontend Services** on ports 5173, 5174, 5175
+### Production Deployment (Azure VM)
 
-### 5. Access the Applications
+**1. Provision Azure VM:**
+```bash
+# Create VM
+az vm create \
+  --resource-group terras-rg \
+  --name terras-vm \
+  --image Ubuntu20_04 \
+  --size Standard_B2s \
+  --public-ip-sku Standard
+```
 
-- **User App**: http://localhost:5173
-- **Admin App**: http://localhost:5174  
-- **Auth (Login/Register)**: http://localhost:5175
+**2. Setup DNS Label (optional):**
+```bash
+az network public-ip update \
+  --resource-group terras-rg \
+  --name terras-vm-ip \
+  --dns-name terras-booking
+```
 
-### 6. Stop All Services
+**3. Deploy to VM:**
+```bash
+# SSH to VM
+ssh azureuser@YOUR_VM_IP
+
+# Clone repo
+git clone https://github.com/YOUR_USERNAME/terras-room-booking.git
+cd terras-room-booking
+
+# Install Docker
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo usermod -aG docker $USER
+
+# Start services
+docker-compose up -d
+```
+
+**4. Setup Reverse Proxy:**
+
+See [docs/nginx-setup.md](./docs/nginx-setup.md) for Nginx configuration
+
+**5. Enable HTTPS (optional):**
+```bash
+sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d your-domain.com
+```
+
+For detailed deployment guide, see [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)
+
+---
+
+## 📡 API Documentation
+
+### Authentication API (Port 3001)
+
+**POST `/register`** - Register new user
+```json
+{
+  "name": "John Doe",
+  "email": "john@email.com",
+  "password": "password123"
+}
+```
+
+**POST `/login`** - User login
+```json
+{
+  "email": "john@email.com",
+  "password": "password123"
+}
+```
+
+### Room API (Port 3002)
+
+**GET `/buildings`** - Get all buildings
+
+**GET `/rooms`** - Get all rooms  
+Query params: `building`, `capacity`, `facilities`
+
+**POST `/rooms`** - Create room (Admin only)
+```json
+{
+  "name": "Room 101",
+  "building": "Building A",
+  "capacity": 30,
+  "facilities": ["Projector", "Whiteboard"]
+}
+```
+
+### Booking API (Port 3003)
+
+**GET `/bookings`** - Get all bookings  
+Query params: `userId`, `roomId`, `status`
+
+**POST `/bookings`** - Create booking
+```json
+{
+  "roomId": "room_id",
+  "userId": "user_id",
+  "startTime": "2024-01-20T09:00:00Z",
+  "endTime": "2024-01-20T11:00:00Z",
+  "purpose": "Meeting"
+}
+```
+
+For complete API documentation, see [docs/API.md](./docs/API.md)
+
+---
+
+## 💻 Development
+
+### Local Development Setup
+
+**1. Clone and install:**
+```bash
+git clone https://github.com/YOUR_USERNAME/terras-room-booking.git
+cd terras-room-booking
+
+# Install dependencies for each service
+cd services/auth && npm install
+cd ../room && npm install
+cd ../booking && npm install
+cd ../frontend-user && npm install
+# ... repeat for other services
+```
+
+**2. Run services individually:**
+```bash
+# Terminal 1 - Auth service
+cd services/auth
+npm run dev
+
+# Terminal 2 - Room service  
+cd services/room
+npm run dev
+
+# Terminal 3 - Frontend
+cd services/frontend-user
+npm run dev
+```
+
+**3. Or use Docker:**
+```bash
+docker-compose up
+```
+
+### Running Tests
 
 ```bash
-./stop-all.sh
+# Run all tests
+npm test
+
+# Run specific service tests
+cd services/auth
+npm test
 ```
 
-Or press `Ctrl+C` in the terminal running start-all.sh
+### Code Style
 
-## 📊 Database Setup
-
-### MongoDB
-No initial setup required. Databases and collections are created automatically on first run.
-
-### PostgreSQL
-Create the database:
-```sql
-CREATE DATABASE terras_auth;
+We use ESLint and Prettier:
+```bash
+npm run lint
+npm run format
 ```
 
-Tables are created automatically by Sequelize on first run.
-
-## 🔐 Default Admin Account
-
-After first run, you can create an admin account via the registration page, then manually update the role in the database:
-
-```sql
-UPDATE users SET role = 'admin' WHERE email = 'admin@example.com';
-```
-
-## 📝 API Endpoints
-
-### Authentication Service (Port 3001)
-- `POST /auth/register` - Register new user
-- `POST /auth/login` - User login
-- `GET /auth/verify` - Verify JWT token
-- `GET /users` - Get all users (admin only)
-
-### Room Service (Port 3002)
-- `GET /rooms` - Get all rooms
-- `GET /rooms/:id` - Get room by ID
-- `POST /rooms` - Create room (admin only)
-- `PUT /rooms/:id` - Update room (admin only)
-- `DELETE /rooms/:id` - Delete room (admin only)
-- `GET /buildings` - Get all buildings
-- `POST /buildings` - Create building (admin only)
-
-### Booking Service (Port 3003)
-- `GET /bookings` - Get all bookings (with filters)
-- `GET /bookings?userId=X` - Get user bookings
-- `GET /bookings?roomId=X` - Get room bookings
-- `POST /bookings` - Create booking
-- `PATCH /bookings/:id/status` - Approve/reject booking
-- `PUT /bookings/:id` - Update booking
-- `DELETE /bookings/:id` - Delete booking
+---
 
 ## 🐛 Troubleshooting
 
 ### Port Already in Use
-The `start-all.sh` script automatically kills processes on required ports. If you see errors, try:
 ```bash
-./stop-all.sh
-./start-all.sh
+# Kill process on specific port
+sudo lsof -ti:5173 | xargs kill -9
+```
+
+### Docker Containers Not Starting
+```bash
+# Check logs
+docker-compose logs
+
+# Rebuild containers
+docker-compose down
+docker-compose build --no-cache
+docker-compose up -d
 ```
 
 ### Database Connection Errors
-- Ensure MongoDB is running: `sudo systemctl status mongod`
-- Ensure PostgreSQL is running: `sudo systemctl status postgresql`
-- Check connection strings in `.env` files
+```bash
+# Check if databases are running
+docker ps | grep -E 'mongo|postgres'
 
-### Login/Logout Issues
-- Clear browser cache and localStorage
-- Ensure all frontend services are running on correct ports
-- Check browser console for errors
+# Restart databases
+docker-compose restart mongo postgres
+```
 
-## 🎯 Usage Guide
+### Frontend Can't Connect to Backend
+- Check `.env` files have correct URLs
+- Verify backend services are running: `curl http://localhost:3001/health`
+- Check CORS settings in backend services
 
-### Making a Booking (User)
-1. Browse available rooms on home page
-2. Click "Booking Sekarang" on desired room
-3. Select date range and time
-4. Fill in activity details
-5. Upload supporting document (optional)
-6. Submit and wait for admin approval
-
-### Approving Bookings (Admin)
-1. Login as admin
-2. Go to "Persetujuan" page
-3. Review booking details
-4. Click "Setujui" to approve or "Tolak" to reject
-5. If rejecting, provide a reason
-
-### Managing Rooms (Admin)
-1. Go to "Kelola Ruangan"
-2. Add buildings first
-3. Add rooms with details and images
-4. Edit or delete as needed
-
-## 🚨 Known Issues & Fixes
-
-✅ **Multi-day booking conflicts** - FIXED: Each day in range is now checked individually  
-✅ **Logout redirect loop** - FIXED: Proper redirect to auth service URL  
-✅ **Port conflicts on restart** - FIXED: Auto-cleanup in start script  
-✅ **localStorage persistence** - FIXED: Now using MongoDB backend  
-
-## 📄 License
-
-This project is for educational purposes as part of UAS (Final Exam) project.
-
-## 👥 Contributors
-
-- Development Team
-- Telkom University
-
-## 📞 Support
-
-For issues or questions, please contact the development team.
+For more issues, see [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md)
 
 ---
 
-**Last Updated**: 2025-12-27  
-**Version**: 1.0.0
+## 🤝 Contributing
+
+Contributions are welcome! Please follow these steps:
+
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit changes (`git commit -m 'Add AmazingFeature'`)
+4. Push to branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed guidelines.
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see [LICENSE](./LICENSE) file for details.
+
+---
+
+## 👥 Authors
+
+- **Your Name** - Initial work - [GitHub](https://github.com/YOUR_USERNAME)
+
+## 🙏 Acknowledgments
+
+- Telkom University for project inspiration
+- React and Node.js communities
+- Docker and Azure documentation
+
+---
+
+## 📞 Support
+
+For support, email your-email@example.com or open an issue on GitHub.
+
+---
+
+**Made with ❤️ for Telkom University**

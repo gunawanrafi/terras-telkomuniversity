@@ -1,6 +1,10 @@
 version: '3.8'
 
 services:
+  # ==========================================
+  # DATABASES
+  # ==========================================
+
   # Auth Database (PostgreSQL)
   postgres:
     image: postgres:15
@@ -13,6 +17,8 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - terras-network
 
   # Room & Booking Database (MongoDB)
   mongo:
@@ -22,7 +28,91 @@ services:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
+    networks:
+      - terras-network
+
+  # ==========================================
+  # BACKEND SERVICES
+  # ==========================================
+
+  auth-service:
+    build: ./services/auth
+    container_name: terras_auth_service
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: 3001
+      DB_NAME: terras_auth
+      DB_USER: postgres
+      DB_PASS: postgres
+      DB_HOST: terras_postgres
+      JWT_SECRET: supersecretkey_change_in_production
+    depends_on:
+      - postgres
+    networks:
+      - terras-network
+
+  room-service:
+    build: ./services/room
+    container_name: terras_room_service
+    ports:
+      - "3002:3002"
+    environment:
+      PORT: 3002
+      MONGODB_URI: mongodb://terras_mongo:27017/terras_rooms
+    depends_on:
+      - mongo
+    networks:
+      - terras-network
+
+  booking-service:
+    build: ./services/booking
+    container_name: terras_booking_service
+    ports:
+      - "3003:3003"
+    environment:
+      PORT: 3003
+      MONGODB_URI: mongodb://terras_mongo:27017/terras_bookings
+      ROOM_SERVICE_URL: http://terras_room_service:3002
+    depends_on:
+      - mongo
+      - room-service
+    networks:
+      - terras-network
+
+  # ==========================================
+  # FRONTEND SERVICES
+  # ==========================================
+
+  frontend-user:
+    build: ./services/frontend-user
+    container_name: terras_frontend_user
+    ports:
+      - "5173:80"
+    networks:
+      - terras-network
+
+  frontend-admin:
+    build: ./services/frontend-admin
+    container_name: terras_frontend_admin
+    ports:
+      - "5174:80"
+    networks:
+      - terras-network
+
+  frontend-auth:
+    build: ./services/frontend-auth
+    container_name: terras_frontend_auth
+    ports:
+      - "5175:80"
+    networks:
+      - terras-network
 
 volumes:
   postgres_data:
   mongo_data:
+
+
+networks:
+  terras-network:
+    driver: bridge

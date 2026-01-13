@@ -1,0 +1,113 @@
+version: '3.8'
+
+# Docker Compose untuk PRODUCTION/SHARING
+# File ini menggunakan pre-built images dari Docker Hub
+# Teman kamu bisa langsung jalankan tanpa build!
+#
+# Cara pakai:
+# 1. docker compose -f docker-compose.prod.yml up -d
+# 2. Akses aplikasi di:
+#    - User App: http://localhost:5173
+#    - Admin App: http://localhost:5174
+#    - Auth App: http://localhost:5175
+
+services:
+  # ==========================================
+  # DATABASES
+  # ==========================================
+
+  # MongoDB untuk Room & Booking services
+  mongo:
+    image: mongo:7
+    container_name: terras_mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - terras-network
+    restart: unless-stopped
+
+  # ==========================================
+  # BACKEND SERVICES (from Docker Hub)
+  # ==========================================
+
+  auth-service:
+    image: gunawanrafi9/terras-auth:latest
+    container_name: terras_auth_service
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: 3001
+      JWT_SECRET: supersecretkey_change_in_production
+    networks:
+      - terras-network
+    restart: unless-stopped
+
+  room-service:
+    image: gunawanrafi9/terras-room:latest
+    container_name: terras_room_service
+    ports:
+      - "3002:3002"
+    environment:
+      PORT: 3002
+      MONGODB_URI: mongodb://terras_mongo:27017/terras_rooms
+    depends_on:
+      - mongo
+    networks:
+      - terras-network
+    restart: unless-stopped
+
+  booking-service:
+    image: gunawanrafi9/terras-booking:latest
+    container_name: terras_booking_service
+    ports:
+      - "3003:3003"
+    environment:
+      PORT: 3003
+      MONGODB_URI: mongodb://terras_mongo:27017/terras_bookings
+      ROOM_SERVICE_URL: http://terras_room_service:3002
+    depends_on:
+      - mongo
+      - room-service
+    networks:
+      - terras-network
+    restart: unless-stopped
+
+  # ==========================================
+  # FRONTEND SERVICES (from Docker Hub)
+  # ==========================================
+
+  frontend-user:
+    image: gunawanrafi9/terras-frontend-user:latest
+    container_name: terras_frontend_user
+    ports:
+      - "5173:80"
+    networks:
+      - terras-network
+    restart: unless-stopped
+
+  frontend-admin:
+    image: gunawanrafi9/terras-frontend-admin:latest
+    container_name: terras_frontend_admin
+    ports:
+      - "5174:80"
+    networks:
+      - terras-network
+    restart: unless-stopped
+
+  frontend-auth:
+    image: gunawanrafi9/terras-frontend-auth:latest
+    container_name: terras_frontend_auth
+    ports:
+      - "5175:80"
+    networks:
+      - terras-network
+    restart: unless-stopped
+
+volumes:
+  mongo_data:
+
+networks:
+  terras-network:
+    driver: bridge

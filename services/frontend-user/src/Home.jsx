@@ -4,7 +4,7 @@ import { useAuth, roomService, bookingService } from '@core';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter, Button, Input, Badge, Modal, DatePicker, ScheduleDatePicker, TimePicker } from '@ui';
 import { Calendar, Clock, Users, MapPin, Search, Filter, UploadCloud, FileText, X, CheckCircle, ChevronLeft, ChevronRight, CalendarDays, AlertTriangle, AlertCircle } from 'lucide-react';
 
-const RoomSchedule = ({ room, date, setDate, onClose, onBook }) => {
+const RoomSchedule = ({ room, date, setDate, onClose, onBook, user }) => {
     const [bookings, setBookings] = React.useState([]);
 
     useEffect(() => {
@@ -22,11 +22,7 @@ const RoomSchedule = ({ room, date, setDate, onClose, onBook }) => {
 
     const hours = Array.from({ length: 18 }, (_, i) => i + 5); // 05:00 to 22:00
 
-    const changeDate = (days) => {
-        const d = new Date(date);
-        d.setDate(d.getDate() + days);
-        setDate(d.toISOString().split('T')[0]);
-    };
+
 
     const formatDate = (dateStr) => {
         return new Date(dateStr).toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' });
@@ -110,7 +106,15 @@ const RoomSchedule = ({ room, date, setDate, onClose, onBook }) => {
 
             {/* Footer Action */}
             <div className="p-3 border-t border-slate-100 bg-white shrink-0">
-                <Button fullWidth size="sm" onClick={onBook}>
+                <Button fullWidth size="sm" onClick={() => {
+                    if (!user) {
+                        // Redirect to auth app (replace port 5173 with 5175)
+                        const authUrl = window.location.origin.replace(':5173', ':5175');
+                        window.location.href = authUrl;
+                        return;
+                    }
+                    onBook();
+                }}>
                     Booking Tanggal Ini
                 </Button>
             </div>
@@ -199,7 +203,9 @@ export const Home = () => {
 
     const handleBookClick = (room, prefilledDate = null) => {
         if (!user) {
-            window.location.href = '/login/';
+            // Redirect to auth app (replace port 5173 with 5175)
+            const authUrl = window.location.origin.replace(':5173', ':5175');
+            window.location.href = authUrl;
             return;
         }
         setSelectedRoom(room);
@@ -365,7 +371,7 @@ export const Home = () => {
     };
 
     return (
-        <div className="min-h-screen pb-20">
+        <div className="min-h-screen pb-20 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
 
             {/* Hero Wrapper containing Hero Image and Floating Filter */}
             <div className="relative mb-48 md:mb-52 lg:mb-40">
@@ -456,6 +462,7 @@ export const Home = () => {
                                     setDate={setScheduleDate}
                                     onClose={() => setViewingScheduleId(null)}
                                     onBook={() => handleBookClick(room, scheduleDate)}
+                                    user={user}
                                 />
                             ) : (
                                 <Card className="group overflow-hidden flex flex-col h-full hover:shadow-xl transition-shadow duration-300">
@@ -516,7 +523,15 @@ export const Home = () => {
                                             </Button>
                                             {/* Secondary Action: Quick Booking */}
                                             <button
-                                                onClick={() => handleBookClick(room)}
+                                                onClick={() => {
+                                                    if (!user) {
+                                                        // Redirect to auth app (replace port 5173 with 5175)
+                                                        const authUrl = window.location.origin.replace(':5173', ':5175');
+                                                        window.location.href = authUrl;
+                                                        return;
+                                                    }
+                                                    handleBookClick(room);
+                                                }}
                                                 className="w-full px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 bg-white border-2 border-slate-300 hover:border-slate-400 rounded-lg transition-colors"
                                             >
                                                 Booking Langsung

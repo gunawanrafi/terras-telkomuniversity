@@ -190,14 +190,21 @@ app.get('/verify', (req, res) => {
 });
 
 // Sync Database and Start Server
-sequelize.sync()
-    .then(() => {
-        console.log('Database connected and synced');
-        seedUsers();
+const connectWithRetry = async () => {
+    try {
+        await sequelize.authenticate();
+        console.log('Database connection established successfully.');
+        await sequelize.sync();
+        console.log('Database synced');
+        await seedUsers();
         app.listen(PORT, () => {
             console.log(`Auth Service running on port ${PORT}`);
         });
-    })
-    .catch(err => {
-        console.error('Database connection failed:', err);
-    });
+    } catch (err) {
+        console.error('Unable to connect to the database:', err);
+        console.log('Retrying connection in 5 seconds...');
+        setTimeout(connectWithRetry, 5000);
+    }
+};
+
+connectWithRetry();

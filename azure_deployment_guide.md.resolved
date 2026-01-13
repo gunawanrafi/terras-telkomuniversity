@@ -1,0 +1,625 @@
+# 🚀 Panduan Deployment TERRAS ke Azure
+
+Panduan lengkap untuk mensimulasikan dan deploy aplikasi TERRAS ke Microsoft Azure menggunakan Docker containers.
+
+## 📋 Daftar Isi
+
+1. [Persiapan Lokal](#1-persiapan-lokal)
+2. [Testing dengan Docker Compose](#2-testing-dengan-docker-compose)
+3. [Build dan Push Images ke Azure](#3-build-dan-push-images-ke-azure)
+4. [Deployment ke Azure](#4-deployment-ke-azure)
+5. [Troubleshooting](#5-troubleshooting)
+
+---
+
+## 1. Persiapan Lokal
+
+### 1.1 Tools yang Diperlukan
+
+Pastikan sudah terinstall:
+
+```bash
+# Cek Docker
+docker --version
+# Output: Docker version 20.x atau lebih tinggi
+
+# Cek Docker Compose
+docker compose version
+# Output: Docker Compose version v2.x atau lebih tinggi
+
+# Cek Azure CLI (akan diinstall nanti jika belum ada)
+az --version
+```
+
+### 1.2 Install Azure CLI (jika belum)
+
+**Linux/Ubuntu:**
+```bash
+curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+```
+
+**Windows:**
+Download dari: https://aka.ms/installazurecliwindows
+
+**Mac:**
+```bash
+brew update && brew install azure-cli
+```
+
+### 1.3 Login ke Azure
+
+```bash
+# Login dengan akun student subscription
+az login
+
+# Verifikasi subscription
+az account list --output table
+
+# Set subscription yang akan digunakan (jika punya lebih dari 1)
+az account set --subscription "nama-subscription-kamu"
+```
+
+---
+
+## 2. Testing dengan Docker Compose
+
+### 2.1 Struktur yang Sudah Ada
+
+Kamu sudah punya:
+- ✅ [docker-compose.yml](file:///home/ubuntu/UASfix/docker-compose.yml) - orchestration file
+- ✅ Dockerfiles untuk semua services
+- ✅ Docker network configuration
+
+### 2.2 Build dan Run Semua Containers
+
+```bash
+# Pastikan di directory root project
+cd /home/ubuntu/UASfix
+
+# Build semua images (tanpa cache untuk fresh build)
+docker compose build --no-cache
+
+# Start semua containers
+docker compose up -d
+
+# Cek status containers
+docker compose ps
+```
+
+**Expected Output:**
+```
+NAME                      STATUS    PORTS
+terras_postgres           Up        0.0.0.0:5432->5432/tcp
+terras_mongo              Up        0.0.0.0:27017->27017/tcp
+terras_auth_service       Up        0.0.0.0:3001->3001/tcp
+terras_room_service       Up        0.0.0.0:3002->3002/tcp
+terras_booking_service    Up        0.0.0.0:3003->3003/tcp
+terras_frontend_user      Up        0.0.0.0:5173->80/tcp
+terras_frontend_admin     Up        0.0.0.0:5174->80/tcp
+terras_frontend_auth      Up        0.0.0.0:5175->80/tcp
+```
+
+### 2.3 Verifikasi Koneksi Antar Container
+
+```bash
+# Cek logs untuk memastikan tidak ada error
+docker compose logs -f
+
+# Test koneksi database dari auth service
+docker exec -it terras_auth_service sh -c "nc -zv terras_postgres 5432"
+
+# Test koneksi MongoDB dari room service
+docker exec -it terras_room_service sh -c "nc -zv terras_mongo 27017"
+
+# Test API endpoints
+curl http://localhost:3001/health  # Auth service
+curl http://localhost:3002/rooms   # Room service
+curl http://localhost:3003/bookings # Booking service
+```
+
+### 2.4 Testing Fungsionalitas
+
+1. **Buka browser dan test:**
+   - User App: http://localhost:5173
+   - Admin App: http://localhost:5174
+   - Auth App: http://localhost:5175
+
+2. **Test flow lengkap:**
+   - ✅ Register user baru
+   - ✅ Login
+   - ✅ Browse rooms
+   - ✅ Create booking
+   - ✅ Admin approval
+   - ✅ Logout
+
+3. **Cek data persistence:**
+   ```bash
+   # Stop containers
+   docker compose down
+   
+   # Start lagi (data harus masih ada karena volumes)
+   docker compose up -d
+   
+   # Login lagi, data booking harus masih ada
+   ```
+
+### 2.5 Cleanup (jika perlu reset)
+
+```bash
+# Stop dan remove containers + volumes
+docker compose down -v
+
+# Remove images (jika mau rebuild dari awal)
+docker compose down --rmi all -v
+```
+
+---
+
+## 3. Build dan Push Images ke Azure
+
+### 3.1 Create Azure Container Registry (ACR)
+
+```bash
+# Set variables
+RESOURCE_GROUP="terras-rg"
+LOCATION="southeastasia"  # Singapore region, terdekat dari Indonesia
+ACR_NAME="terrasregistry"  # Harus unique globally, lowercase only
+
+# Create resource group
+az group create --name $RESOURCE_GROUP --location $LOCATION
+
+# Create container registry
+az acr create \
+  --resource-group $RESOURCE_GROUP \
+  --name $ACR_NAME \
+  --sku Basic \
+  --location $LOCATION
+
+# Enable admin access (untuk development)
+az acr update --name $ACR_NAME --admin-enabled true
+
+# Get login credentials
+az acr credential show --name $ACR_NAME --resource-group $RESOURCE_GROUP
+```
+
+**Simpan output credentials!** Kamu akan butuh:
+- `username`
+- `password` (atau `password2`)
+
+### 3.2 Login ke ACR
+
+```bash
+# Login dengan Azure CLI
+az acr login --name $ACR_NAME
+
+# Atau manual dengan Docker
+docker login ${ACR_NAME}.azurecr.io
+# Username: <dari step sebelumnya>
+# Password: <dari step sebelumnya>
+```
+
+### 3.3 Tag dan Push Images
+
+```bash
+# Set ACR URL
+ACR_URL="${ACR_NAME}.azurecr.io"
+
+# Tag images dengan ACR prefix
+docker tag terras_auth_service:latest ${ACR_URL}/auth-service:latest
+docker tag terras_room_service:latest ${ACR_URL}/room-service:latest
+docker tag terras_booking_service:latest ${ACR_URL}/booking-service:latest
+docker tag terras_frontend_user:latest ${ACR_URL}/frontend-user:latest
+docker tag terras_frontend_admin:latest ${ACR_URL}/frontend-admin:latest
+docker tag terras_frontend_auth:latest ${ACR_URL}/frontend-auth:latest
+
+# Push ke ACR
+docker push ${ACR_URL}/auth-service:latest
+docker push ${ACR_URL}/room-service:latest
+docker push ${ACR_URL}/booking-service:latest
+docker push ${ACR_URL}/frontend-user:latest
+docker push ${ACR_URL}/frontend-admin:latest
+docker push ${ACR_URL}/frontend-auth:latest
+
+# Verifikasi images di ACR
+az acr repository list --name $ACR_NAME --output table
+```
+
+### 3.4 Push Database Images (Optional)
+
+Untuk PostgreSQL dan MongoDB, kamu bisa:
+- **Option A**: Gunakan managed services (Azure Database for PostgreSQL & Cosmos DB)
+- **Option B**: Deploy containers (lebih murah untuk testing)
+
+Jika pilih Option B:
+```bash
+# Tag dan push database images
+docker tag postgres:15 ${ACR_URL}/postgres:15
+docker tag mongo:7 ${ACR_URL}/mongo:7
+
+docker push ${ACR_URL}/postgres:15
+docker push ${ACR_URL}/mongo:7
+```
+
+---
+
+## 4. Deployment ke Azure
+
+### Option A: Azure Container Apps (Recommended untuk Microservices)
+
+#### 4.1 Install Extension
+
+```bash
+az extension add --name containerapp --upgrade
+```
+
+#### 4.2 Create Container Apps Environment
+
+```bash
+# Create environment
+az containerapp env create \
+  --name terras-env \
+  --resource-group $RESOURCE_GROUP \
+  --location $LOCATION
+
+# Get ACR credentials
+ACR_USERNAME=$(az acr credential show --name $ACR_NAME --query username -o tsv)
+ACR_PASSWORD=$(az acr credential show --name $ACR_NAME --query passwords[0].value -o tsv)
+```
+
+#### 4.3 Deploy Database Containers
+
+**PostgreSQL:**
+```bash
+az containerapp create \
+  --name postgres \
+  --resource-group $RESOURCE_GROUP \
+  --environment terras-env \
+  --image ${ACR_URL}/postgres:15 \
+  --registry-server ${ACR_URL} \
+  --registry-username $ACR_USERNAME \
+  --registry-password $ACR_PASSWORD \
+  --target-port 5432 \
+  --ingress internal \
+  --env-vars \
+    POSTGRES_USER=postgres \
+    POSTGRES_PASSWORD=postgres \
+    POSTGRES_DB=terras_auth \
+  --cpu 0.5 \
+  --memory 1.0Gi
+```
+
+**MongoDB:**
+```bash
+az containerapp create \
+  --name mongo \
+  --resource-group $RESOURCE_GROUP \
+  --environment terras-env \
+  --image ${ACR_URL}/mongo:7 \
+  --registry-server ${ACR_URL} \
+  --registry-username $ACR_USERNAME \
+  --registry-password $ACR_PASSWORD \
+  --target-port 27017 \
+  --ingress internal \
+  --cpu 0.5 \
+  --memory 1.0Gi
+```
+
+#### 4.4 Deploy Backend Services
+
+**Auth Service:**
+```bash
+az containerapp create \
+  --name auth-service \
+  --resource-group $RESOURCE_GROUP \
+  --environment terras-env \
+  --image ${ACR_URL}/auth-service:latest \
+  --registry-server ${ACR_URL} \
+  --registry-username $ACR_USERNAME \
+  --registry-password $ACR_PASSWORD \
+  --target-port 3001 \
+  --ingress external \
+  --env-vars \
+    PORT=3001 \
+    DB_NAME=terras_auth \
+    DB_USER=postgres \
+    DB_PASS=postgres \
+    DB_HOST=postgres \
+    JWT_SECRET=supersecretkey_change_in_production \
+  --cpu 0.5 \
+  --memory 1.0Gi
+```
+
+**Room Service:**
+```bash
+az containerapp create \
+  --name room-service \
+  --resource-group $RESOURCE_GROUP \
+  --environment terras-env \
+  --image ${ACR_URL}/room-service:latest \
+  --registry-server ${ACR_URL} \
+  --registry-username $ACR_USERNAME \
+  --registry-password $ACR_PASSWORD \
+  --target-port 3002 \
+  --ingress external \
+  --env-vars \
+    PORT=3002 \
+    MONGODB_URI=mongodb://mongo:27017/terras_rooms \
+  --cpu 0.5 \
+  --memory 1.0Gi
+```
+
+**Booking Service:**
+```bash
+az containerapp create \
+  --name booking-service \
+  --resource-group $RESOURCE_GROUP \
+  --environment terras-env \
+  --image ${ACR_URL}/booking-service:latest \
+  --registry-server ${ACR_URL} \
+  --registry-username $ACR_USERNAME \
+  --registry-password $ACR_PASSWORD \
+  --target-port 3003 \
+  --ingress external \
+  --env-vars \
+    PORT=3003 \
+    MONGODB_URI=mongodb://mongo:27017/terras_bookings \
+  --cpu 0.5 \
+  --memory 1.0Gi
+```
+
+#### 4.5 Get Backend URLs
+
+```bash
+# Get URLs untuk update frontend env vars
+AUTH_URL=$(az containerapp show --name auth-service --resource-group $RESOURCE_GROUP --query properties.configuration.ingress.fqdn -o tsv)
+ROOM_URL=$(az containerapp show --name room-service --resource-group $RESOURCE_GROUP --query properties.configuration.ingress.fqdn -o tsv)
+BOOKING_URL=$(az containerapp show --name booking-service --resource-group $RESOURCE_GROUP --query properties.configuration.ingress.fqdn -o tsv)
+
+echo "Auth Service: https://$AUTH_URL"
+echo "Room Service: https://$ROOM_URL"
+echo "Booking Service: https://$BOOKING_URL"
+```
+
+#### 4.6 Rebuild Frontend dengan Production URLs
+
+Update `.env` files di frontend services dengan URLs dari Azure, lalu rebuild:
+
+```bash
+# Update .env files (contoh untuk frontend-user)
+cat > services/frontend-user/.env << EOF
+VITE_API_URL=https://$AUTH_URL
+VITE_ROOM_SERVICE=https://$ROOM_URL
+VITE_BOOKING_SERVICE=https://$BOOKING_URL
+VITE_AUTH_APP_URL=https://auth-frontend.xxx.azurecontainerapps.io
+VITE_USER_APP_URL=https://user-frontend.xxx.azurecontainerapps.io
+VITE_ADMIN_APP_URL=https://admin-frontend.xxx.azurecontainerapps.io
+EOF
+
+# Rebuild dan push
+docker compose build frontend-user
+docker tag terras_frontend_user:latest ${ACR_URL}/frontend-user:v2
+docker push ${ACR_URL}/frontend-user:v2
+```
+
+#### 4.7 Deploy Frontend Services
+
+**User Frontend:**
+```bash
+az containerapp create \
+  --name frontend-user \
+  --resource-group $RESOURCE_GROUP \
+  --environment terras-env \
+  --image ${ACR_URL}/frontend-user:v2 \
+  --registry-server ${ACR_URL} \
+  --registry-username $ACR_USERNAME \
+  --registry-password $ACR_PASSWORD \
+  --target-port 80 \
+  --ingress external \
+  --cpu 0.25 \
+  --memory 0.5Gi
+```
+
+**Admin Frontend:**
+```bash
+az containerapp create \
+  --name frontend-admin \
+  --resource-group $RESOURCE_GROUP \
+  --environment terras-env \
+  --image ${ACR_URL}/frontend-admin:v2 \
+  --registry-server ${ACR_URL} \
+  --registry-username $ACR_USERNAME \
+  --registry-password $ACR_PASSWORD \
+  --target-port 80 \
+  --ingress external \
+  --cpu 0.25 \
+  --memory 0.5Gi
+```
+
+**Auth Frontend:**
+```bash
+az containerapp create \
+  --name frontend-auth \
+  --resource-group $RESOURCE_GROUP \
+  --environment terras-env \
+  --image ${ACR_URL}/frontend-auth:v2 \
+  --registry-server ${ACR_URL} \
+  --registry-username $ACR_USERNAME \
+  --registry-password $ACR_PASSWORD \
+  --target-port 80 \
+  --ingress external \
+  --cpu 0.25 \
+  --memory 0.5Gi
+```
+
+#### 4.8 Get Frontend URLs
+
+```bash
+az containerapp show --name frontend-user --resource-group $RESOURCE_GROUP --query properties.configuration.ingress.fqdn -o tsv
+az containerapp show --name frontend-admin --resource-group $RESOURCE_GROUP --query properties.configuration.ingress.fqdn -o tsv
+az containerapp show --name frontend-auth --resource-group $RESOURCE_GROUP --query properties.configuration.ingress.fqdn -o tsv
+```
+
+---
+
+### Option B: Azure App Service for Containers
+
+Jika prefer App Service (lebih simple tapi kurang flexible):
+
+```bash
+# Create App Service Plan
+az appservice plan create \
+  --name terras-plan \
+  --resource-group $RESOURCE_GROUP \
+  --is-linux \
+  --sku B1
+
+# Deploy each service as separate web app
+az webapp create \
+  --resource-group $RESOURCE_GROUP \
+  --plan terras-plan \
+  --name terras-auth-service \
+  --deployment-container-image-name ${ACR_URL}/auth-service:latest
+
+# Configure environment variables
+az webapp config appsettings set \
+  --resource-group $RESOURCE_GROUP \
+  --name terras-auth-service \
+  --settings \
+    PORT=3001 \
+    DB_HOST=<postgres-host> \
+    DB_USER=postgres \
+    DB_PASS=postgres \
+    DB_NAME=terras_auth \
+    JWT_SECRET=supersecretkey
+```
+
+---
+
+## 5. Troubleshooting
+
+### 5.1 Container Tidak Start
+
+```bash
+# Cek logs
+docker compose logs <service-name>
+
+# Di Azure
+az containerapp logs show \
+  --name <app-name> \
+  --resource-group $RESOURCE_GROUP \
+  --follow
+```
+
+### 5.2 Database Connection Failed
+
+**Lokal:**
+- Pastikan containers di network yang sama
+- Gunakan container name sebagai hostname (bukan localhost)
+
+**Azure:**
+- Pastikan ingress type benar (internal untuk DB, external untuk API)
+- Cek environment variables
+
+### 5.3 CORS Issues
+
+Tambahkan CORS configuration di backend services untuk allow Azure URLs.
+
+### 5.4 Image Pull Failed
+
+```bash
+# Re-login ke ACR
+az acr login --name $ACR_NAME
+
+# Verify credentials
+az acr credential show --name $ACR_NAME
+```
+
+### 5.5 Out of Memory
+
+```bash
+# Increase resources
+az containerapp update \
+  --name <app-name> \
+  --resource-group $RESOURCE_GROUP \
+  --cpu 1.0 \
+  --memory 2.0Gi
+```
+
+---
+
+## 📊 Cost Estimation (Student Subscription)
+
+**Azure Container Apps:**
+- Environment: ~$0 (free tier)
+- Each container: ~$15-30/month (depends on usage)
+- **Total**: ~$50-100/month untuk semua services
+
+**Tips Hemat:**
+- Gunakan free tier sebisa mungkin
+- Scale down saat tidak digunakan
+- Hapus resources setelah demo/presentasi
+
+---
+
+## ✅ Checklist Deployment
+
+### Lokal Testing
+- [ ] Docker dan Docker Compose terinstall
+- [ ] Build semua images berhasil
+- [ ] Semua containers running
+- [ ] Database connections OK
+- [ ] API endpoints accessible
+- [ ] Frontend dapat akses backend
+- [ ] Full user flow works (register → login → booking → approval)
+- [ ] Data persistence works (restart containers, data masih ada)
+
+### Azure Preparation
+- [ ] Azure CLI terinstall
+- [ ] Login ke Azure account
+- [ ] Student subscription aktif
+- [ ] Resource group created
+- [ ] Container Registry created
+- [ ] Images pushed ke ACR
+
+### Azure Deployment
+- [ ] Container Apps Environment created
+- [ ] Database containers deployed
+- [ ] Backend services deployed
+- [ ] Frontend services deployed dengan production URLs
+- [ ] All services accessible via HTTPS
+- [ ] Full user flow works di production
+- [ ] CORS configured correctly
+
+---
+
+## 🎯 Next Steps
+
+1. **Testing Lokal** (Hari 1-2)
+   - Build dan run dengan Docker Compose
+   - Test semua fitur
+   - Fix bugs jika ada
+
+2. **Prepare Azure** (Hari 3)
+   - Setup ACR
+   - Push images
+   - Test pull dari ACR
+
+3. **Deploy ke Azure** (Hari 4-5)
+   - Deploy databases
+   - Deploy backends
+   - Deploy frontends
+   - Configure networking
+
+4. **Final Testing** (Hari 6)
+   - Test production URLs
+   - Performance testing
+   - Security check
+
+5. **Documentation** (Hari 7)
+   - Screenshot deployment
+   - Record demo video
+   - Prepare presentation
+
+---
+
+**Good luck dengan deployment! 🚀**

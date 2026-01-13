@@ -26,3 +26,7 @@ dist-ssr
 # Environment Variables
 .env
 *.env
+
+# Azure Credentials (NEVER commit these!)
+.azure-credentials
+.azure-urls
