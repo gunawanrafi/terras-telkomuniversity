@@ -510,7 +510,7 @@ This project is licensed under the MIT License - see [LICENSE](./LICENSE) file f
 
 ## 👥 Authors
 
-- **Your Name** - Initial work - [GitHub](https://github.com/YOUR_USERNAME)
+- Rafi Gunawan, Siti Nurhayati Syafaningrum, Ataloh Zidan, Adinda Tariska - Initial work - [GitHub](https://github.com/gunawanrafi)
 
 ## 🙏 Acknowledgments
 
